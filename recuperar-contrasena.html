@@ -1,0 +1,347 @@
+<!doctype html>
+<!--
+  Página «Cambiar mi contraseña» de Kiubo (sirve para Kiubo Negocios y Kiubo Servicios).
+
+  Qué hace: la persona toca «¿Olvidaste tu contraseña?» en la app, Supabase le manda un correo con un enlace a
+  esta página y aquí escribe su contraseña nueva. Es una sola página, sin librerías ni servicios de terceros:
+  solo habla con Supabase.
+
+  El enlace trae una clave de un solo uso en la parte de la dirección que va después del «#» (esa parte no se
+  manda a ningún servidor, ni siquiera a GitHub). Entiende dos formas:
+    · #token_hash=…&type=recovery    La que pone la plantilla del correo (supabase/plantilla-correo-recuperar.html).
+                                     La clave se verifica hasta que la persona toca el botón, así los programas
+                                     que «abren» los enlaces para revisarlos (algunos antivirus y servidores de
+                                     correo) no la gastan.
+    · #access_token=…&type=recovery  El enlace estándar de Supabase, por si la plantilla no se cambió o el Site URL
+                                     apunta aquí.
+
+  Dónde se publica: junto a las páginas legales, en
+  https://kiubo-labs.github.io/kiubo-legal/recuperar-contrasena.html
+
+  La clave sb_publishable_… es pública por diseño (es la misma que lleva la app); lo que protege los datos es Supabase.
+
+  Si cambias el código de la etiqueta «script» de abajo hay que actualizar el hash de la política de seguridad
+  (la etiqueta meta Content-Security-Policy): la prueba __tests__/paginaRecuperarContrasena.test.ts dice cuál es el correcto.
+-->
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#E8702A">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-rzm+nmAnRcryzez4J2aL6ITE71t0eo/e8tOrPqKLseQ='; style-src 'unsafe-inline'; img-src data:; connect-src https://wwkaaomonlccvbbetefv.supabase.co; base-uri 'none'; form-action 'none'">
+<title>Cambiar mi contraseña · Kiubo</title>
+<link rel="icon" href="data:image/png;base64,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">
+<style>
+  :root {
+    --naranja: #E8702A;
+    --boton: #BF4F14;
+    --boton-hover: #A8430F;
+    --texto: #1F2933;
+    --suave: #52606D;
+    --borde: #9AA5B1;
+    --fondo: #FFF7F1;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px 16px;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+  main {
+    width: 100%;
+    max-width: 440px;
+    background: #fff;
+    border-top: 6px solid var(--naranja);
+    border-radius: 16px;
+    box-shadow: 0 6px 24px rgba(31, 41, 51, 0.10);
+    padding: 28px 24px 32px;
+  }
+  .logo { display: block; width: 56px; height: 56px; margin: 0 0 12px; }
+  h1 { margin: 0 0 8px; font-size: 1.5rem; line-height: 1.25; }
+  h1:focus { outline: none; }
+  p { margin: 0 0 16px; }
+  label { display: block; margin: 16px 0 6px; font-weight: 600; }
+  input[type="password"], input[type="text"] {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 14px;
+    font: inherit;
+    font-size: 1rem;
+    color: var(--texto);
+    background: #fff;
+    border: 1.5px solid var(--borde);
+    border-radius: 10px;
+  }
+  input[type="password"]:focus, input[type="text"]:focus, button:focus-visible {
+    outline: 3px solid rgba(232, 112, 42, 0.45);
+    outline-offset: 1px;
+    border-color: var(--naranja);
+  }
+  .mostrar { display: flex; align-items: center; gap: 10px; margin: 14px 0 0; font-weight: 400; min-height: 44px; }
+  .mostrar input { width: 22px; height: 22px; margin: 0; accent-color: var(--boton); }
+  button {
+    display: block;
+    width: 100%;
+    min-height: 52px;
+    margin-top: 20px;
+    padding: 12px 16px;
+    font: inherit;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: #fff;
+    background: var(--boton);
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+  button:hover { background: var(--boton-hover); }
+  button:disabled { opacity: 0.65; cursor: default; }
+  .aviso {
+    margin: 16px 0 0;
+    padding: 12px 14px;
+    color: #912018;
+    background: #FEF3F2;
+    border: 1px solid #FDA29B;
+    border-radius: 10px;
+  }
+  .suave { color: var(--suave); }
+  footer { max-width: 440px; text-align: center; font-size: 0.875rem; color: var(--suave); }
+  footer p { margin: 0 0 6px; }
+  a { color: #9C3F0E; }
+</style>
+</head>
+<body>
+<main>
+  <img class="logo" src="data:image/png;base64,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" alt="Kiubo" width="56" height="56">
+  <h1 id="titulo" tabindex="-1">Cambiar mi contraseña</h1>
+  <p id="texto" class="suave">Un momento…</p>
+  <noscript><p class="aviso">Para cambiar tu contraseña esta página necesita JavaScript. Actívalo en tu navegador y vuelve a abrir el enlace del correo.</p></noscript>
+  <form id="formulario" hidden novalidate>
+    <label for="nueva">Contraseña nueva</label>
+    <input id="nueva" name="nueva" type="password" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label for="repite">Repite la contraseña nueva</label>
+    <input id="repite" name="repite" type="password" autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <label class="mostrar" for="mostrar"><input id="mostrar" type="checkbox"> Mostrar contraseñas</label>
+    <p id="aviso" class="aviso" role="alert" hidden></p>
+    <button id="boton" type="submit">Cambiar contraseña</button>
+  </form>
+</main>
+<footer>
+  <p>¿Necesitas ayuda? Escríbenos a <a href="mailto:grupo.cruozvo@gmail.com">grupo.cruozvo@gmail.com</a>.</p>
+  <p><a href="politica-de-privacidad.html">Aviso de privacidad</a></p>
+</footer>
+<script>
+(function () {
+  'use strict';
+
+  var SUPABASE_URL = 'https://wwkaaomonlccvbbetefv.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_JQUdEcBgNrNMkcHAVHpUHg_J6ho16z_';
+  var LARGO_MINIMO = 8;
+  var ESPERA_MAXIMA_MS = 20000;
+
+  var TEXTOS = {
+    sinEnlace: 'Para cambiar tu contraseña pide un enlace desde la app de Kiubo: en la pantalla de inicio de sesión toca «¿Olvidaste tu contraseña?» y sigue las instrucciones.',
+    invalidoTitulo: 'Este enlace ya no sirve',
+    invalido: 'Cada enlace para cambiar la contraseña se puede usar una sola vez y vence a la hora. Abre la app de Kiubo, toca «¿Olvidaste tu contraseña?» y pide uno nuevo. Usa siempre el correo más reciente y ábrelo una sola vez.',
+    cambiarTitulo: 'Cambia tu contraseña',
+    cambiar: 'Escribe la contraseña nueva de tu cuenta de Kiubo. Debe tener al menos ' + LARGO_MINIMO + ' caracteres.',
+    exitoTitulo: 'Listo, cambiaste tu contraseña',
+    exito: 'Ya puedes abrir tu app de Kiubo e iniciar sesión con la contraseña nueva. Puedes cerrar esta página.',
+    corta: 'La contraseña debe tener al menos ' + LARGO_MINIMO + ' caracteres.',
+    distintas: 'Las dos contraseñas no son iguales.',
+    igual: 'La contraseña nueva debe ser distinta a la que tenías.',
+    debil: 'Esa contraseña es muy fácil de adivinar. Prueba con una más larga o que mezcle letras y números.',
+    filtrada: 'Esa contraseña aparece en filtraciones de datos. Elige otra.',
+    limite: 'Hiciste muchos intentos seguidos. Espera unos minutos y vuelve a intentarlo.',
+    red: 'No pudimos conectarnos. Revisa tu internet e inténtalo de nuevo.',
+    servidor: 'El servicio no respondió. Inténtalo de nuevo en un momento.',
+    generico: 'No pudimos cambiar la contraseña. Inténtalo de nuevo; si sigue fallando, pide un enlace nuevo desde la app.'
+  };
+
+  function el(id) { return document.getElementById(id); }
+  var titulo = el('titulo');
+  var texto = el('texto');
+  var formulario = el('formulario');
+  var campoNueva = el('nueva');
+  var campoRepite = el('repite');
+  var casillaMostrar = el('mostrar');
+  var aviso = el('aviso');
+  var boton = el('boton');
+
+  function avisar(mensaje) {
+    aviso.textContent = mensaje;
+    aviso.hidden = !mensaje;
+  }
+
+  function pantalla(tituloNuevo, textoNuevo, conFormulario, enfocar) {
+    titulo.textContent = tituloNuevo;
+    texto.textContent = textoNuevo;
+    formulario.hidden = !conFormulario;
+    avisar('');
+    if (enfocar) { titulo.focus(); }
+  }
+
+  // Lo que trae la dirección: primero lo que va después del «#» y, por si acaso, lo que va después del «?».
+  function leerEnlace() {
+    var datos = {};
+    [location.hash.replace(/^#/, ''), location.search.replace(/^\?/, '')].forEach(function (cadena) {
+      if (!cadena) { return; }
+      new URLSearchParams(cadena).forEach(function (valor, clave) {
+        if (!(clave in datos)) { datos[clave] = valor; }
+      });
+    });
+    return datos;
+  }
+
+  // La clave de un solo uso no debe quedarse en la barra de direcciones ni en el historial.
+  function limpiarDireccion() {
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* no pasa nada */ }
+  }
+
+  async function llamar(metodo, ruta, cuerpo, jwt) {
+    var control = new AbortController();
+    var reloj = setTimeout(function () { control.abort(); }, ESPERA_MAXIMA_MS);
+    try {
+      var cabeceras = {
+        apikey: SUPABASE_KEY,
+        Authorization: 'Bearer ' + (jwt || SUPABASE_KEY),
+        'X-Supabase-Api-Version': '2024-01-01'
+      };
+      var opciones = { method: metodo, headers: cabeceras, signal: control.signal };
+      if (cuerpo) {
+        cabeceras['Content-Type'] = 'application/json;charset=UTF-8';
+        opciones.body = JSON.stringify(cuerpo);
+      }
+      var respuesta = await fetch(SUPABASE_URL + ruta, opciones);
+      var crudo = await respuesta.text();
+      var json = null;
+      try { json = crudo ? JSON.parse(crudo) : null; } catch (e) { json = null; }
+      return { ok: respuesta.ok, status: respuesta.status, json: json };
+    } finally {
+      clearTimeout(reloj);
+    }
+  }
+
+  function codigoDe(respuesta) {
+    var j = respuesta.json || {};
+    if (typeof j.error_code === 'string') { return j.error_code; }
+    return typeof j.code === 'string' ? j.code : '';
+  }
+
+  var enlace = leerEnlace();
+  limpiarDireccion();
+
+  var esRecuperacion = enlace.type === 'recovery';
+  var tokenHash = esRecuperacion ? (enlace.token_hash || '') : '';
+  var accessToken = esRecuperacion ? (enlace.access_token || '') : '';
+
+  function invalido() {
+    tokenHash = '';
+    accessToken = '';
+    pantalla(TEXTOS.invalidoTitulo, TEXTOS.invalido, false, true);
+  }
+
+  function confirmado(tipo) {
+    var titulos = { signup: 'Tu correo quedó confirmado', email_change: 'Tu correo quedó actualizado' };
+    pantalla(titulos[tipo] || 'Listo', 'Ya puedes volver a la app de Kiubo.', false, false);
+  }
+
+  if (enlace.error || enlace.error_code || enlace.error_description) {
+    invalido();
+  } else if (tokenHash || accessToken) {
+    pantalla(TEXTOS.cambiarTitulo, TEXTOS.cambiar, true, false);
+  } else if (enlace.access_token) {
+    // Otro correo de Supabase (confirmar cuenta, cambiar correo) que llegó a esta dirección: ya quedó verificado.
+    confirmado(enlace.type);
+  } else {
+    pantalla('Cambiar mi contraseña', TEXTOS.sinEnlace, false, false);
+  }
+
+  function falloDeVerificacion(respuesta) {
+    if (respuesta.status === 429) { avisar(TEXTOS.limite); return; }
+    if (respuesta.status >= 500) { avisar(TEXTOS.servidor); return; }
+    invalido();
+  }
+
+  function falloDeCambio(respuesta) {
+    var codigo = codigoDe(respuesta);
+    if (respuesta.status === 429) { avisar(TEXTOS.limite); return; }
+    if (respuesta.status >= 500) { avisar(TEXTOS.servidor); return; }
+    if (codigo === 'same_password') { avisar(TEXTOS.igual); return; }
+    if (codigo === 'weak_password') {
+      var razones = (respuesta.json && respuesta.json.weak_password && respuesta.json.weak_password.reasons) || [];
+      avisar(razones.indexOf('pwned') >= 0 ? TEXTOS.filtrada : razones.indexOf('length') >= 0 ? TEXTOS.corta : TEXTOS.debil);
+      return;
+    }
+    if (respuesta.status === 401 || respuesta.status === 403 ||
+        codigo === 'session_expired' || codigo === 'session_not_found' || codigo === 'bad_jwt' || codigo === 'no_authorization') {
+      invalido();
+      return;
+    }
+    avisar(TEXTOS.generico);
+  }
+
+  casillaMostrar.addEventListener('change', function () {
+    var tipo = casillaMostrar.checked ? 'text' : 'password';
+    campoNueva.type = tipo;
+    campoRepite.type = tipo;
+  });
+
+  var ocupado = false;
+
+  formulario.addEventListener('submit', async function (evento) {
+    evento.preventDefault();
+    if (ocupado) { return; }
+
+    var nueva = campoNueva.value;
+    var repite = campoRepite.value;
+    if (nueva.length < LARGO_MINIMO) { avisar(TEXTOS.corta); campoNueva.focus(); return; }
+    if (nueva !== repite) { avisar(TEXTOS.distintas); campoRepite.focus(); return; }
+
+    avisar('');
+    ocupado = true;
+    boton.disabled = true;
+    boton.textContent = 'Cambiando…';
+    try {
+      if (!accessToken) {
+        var verificacion = await llamar('POST', '/auth/v1/verify', { type: 'recovery', token_hash: tokenHash });
+        if (!verificacion.ok) { falloDeVerificacion(verificacion); return; }
+        accessToken = (verificacion.json && verificacion.json.access_token) || '';
+        if (!accessToken) { invalido(); return; }
+        tokenHash = ''; // ya se gastó: si el cambio falla, se reintenta con la sesión que ya se abrió
+      }
+
+      var cambio = await llamar('PUT', '/auth/v1/user', { password: nueva }, accessToken);
+      if (!cambio.ok) { falloDeCambio(cambio); return; }
+
+      // Cierra la sesión temporal que abrió el enlace (si no se logra, no pasa nada: vence sola).
+      llamar('POST', '/auth/v1/logout?scope=local', null, accessToken).catch(function () {});
+      accessToken = '';
+      campoNueva.value = '';
+      campoRepite.value = '';
+      pantalla(TEXTOS.exitoTitulo, TEXTOS.exito, false, true);
+    } catch (error) {
+      avisar(TEXTOS.red);
+    } finally {
+      ocupado = false;
+      boton.disabled = false;
+      boton.textContent = 'Cambiar contraseña';
+    }
+  });
+})();
+</script>
+</body>
+</html>
